@@ -1,0 +1,5 @@
+[*.{js,jsx,ts,tsx,vue}]
+indent_style = space   <--这里定义缩进类型是空格还是tab
+indent_size = 2        <--这里需要与.eslintrc.js的indent对应
+trim_trailing_whitespace = true
+insert_final_newline = true
