@@ -3,7 +3,7 @@
     <div id="nav" v-if="this.$store.state.showNav">
       <div class="navBtn" @click="routrGo('/home',1)" :class="this.$store.state.navType==1?'navAct':''">blog</div>
       <div class="navBtn" @click="routrGo('/music',2)" :class="this.$store.state.navType==2?'navAct':''">music</div>
-      <div class="navBtn" @click="routrGo('/addMusic',3)" :class="this.$store.state.navType==3?'navAct':''">about</div>
+      <div class="navBtn" @click="routrGo('/about',3)" :class="this.$store.state.navType==3?'navAct':''">about</div>
     </div>
     <div id="view">
       <router-view/>

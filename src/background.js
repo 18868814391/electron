@@ -1,9 +1,11 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, globalShortcut, Menu } from 'electron'
+import { app, protocol, BrowserWindow, globalShortcut, Menu, ipcMain, dialog } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
+const DataStore = require('../MusicDataStore')
+const MusicData = new DataStore({ name: 'Music Data' })
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -110,3 +112,25 @@ if (isDevelopment) {
     })
   }
 }
+
+// 添加窗口发来的信息：打开文件夹去选择音乐
+ipcMain.on('open-music-file', (event) => {
+  dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Music', extensions: ['mp3', 'flac'] }]
+  }).then((res) => {
+    // 拿到结果
+    const { canceled, filePaths } = res
+    if (!canceled && filePaths.length) {
+      event.sender.send('selected-file', filePaths)
+    }
+  })
+})
+
+// 添加窗口发来的信息： 导入音乐
+ipcMain.on('add-tracks', (event, tracks) => {
+  // 数据持久化
+  const updateTracks = MusicData.addTracks(tracks).getTracks() // 先保存再拿最新的出来
+  // mainWindow.send('getTracks', updateTracks) // 通知index.html渲染
+  // closeAddWindow() // 关闭add页面
+})
