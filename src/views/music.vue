@@ -1,8 +1,8 @@
 <template>
   <div class="music">
     <button @click="addMusic()">添加</button>
-    <audio ref='audio' controls>
-        <source src="C:\\Users\\Administrator\\Desktop\\文学者の恋文.mp3" />
+    <audio ref='audio' controls v-show="false">
+        <source src="" />
         您的浏览器不支持 audio 元素。
     </audio>
     <div class="musicList">
@@ -23,8 +23,17 @@
         <div class="option-modal" @click="changeModal()">播放模式：{{modal==1?'顺序播放':modal==2?'随机播放':'单曲循环'}}</div>
       </div>
       <div class="myAudio-tit">{{currentTrack.fileName}}</div>
-      <div class="progress-bar" :style="{width:percent*100+'%'}"></div>
-      <div class="bar-right">{{daojishi}}</div>
+      <div class="barCon" ref="barCon">
+        <div class="progress-bar" :style="{width:percent*100+'%'}"></div>
+        <div class="barBall" draggable="true" @dragstart="dragstart2" @dragend="dragend2"  :style="{left:percent*100+'%'}"></div>
+      </div>
+      <div class="bar-right">
+        {{daojishi}}
+        <div class="volume">
+          <!-- {{volumPer}} -->
+          <div class="volume-block" draggable="true" @dragstart="dragstart" @dragend="dragend" :style="{left:`${volumPer*100}%`}"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -46,7 +55,12 @@ export default {
       musicIndex: 0, // 当前选择的index
       modal: 1, // 播放模式:1  顺序播放    2随机播放   3单曲循环
       openWin: null,
-      musicList: []
+      musicList: [],
+      volumStart: 0,
+      volumEnd: 0,
+      langStart: 0,
+      langEnd: 0,
+      domWidth: 1
     }
   },
   created() {
@@ -54,7 +68,60 @@ export default {
     this.listen1()
     this.listen2()
   },
+  mounted() {
+    this.audio = this.$refs.audio
+  },
+  watch: {
+    musicList: {
+      deep: true,
+      handler: function(newVal, oldVal) {
+        if (newVal.length) {
+          this.goPlay(newVal[0], 0)
+        }
+      }
+    }
+  },
+  computed: {
+    volumPer() {
+      if (+((this.volumEnd - this.volumStart) / 100).toFixed(3) >= 1) {
+        return 1
+      } else if (+((this.volumEnd - this.volumStart) / 100).toFixed(3) <= 0) {
+        return 0
+      } else {
+        return +((this.volumEnd - this.volumStart) / 100).toFixed(3)
+      }
+    },
+    langPer() {
+      if (+((this.langEnd - this.langStart) / this.domWidth).toFixed(3) >= 1) {
+        return 1
+      } else if (+((this.langEnd - this.langStart) / this.domWidth).toFixed(3) <= 0) {
+        return 0
+      } else {
+        return +((this.langEnd - this.langStart) / this.domWidth).toFixed(3)
+      }
+    }
+  },
   methods: {
+    dragstart(e) {
+      if (!this.volumStart) {
+        this.volumStart = e.screenX
+      }
+    },
+    dragend(e) {
+      this.volumEnd = e.screenX
+      this.audio.volume = this.volumPer
+    },
+    dragstart2(e) {
+      if (!this.langStart) {
+        this.langStart = e.screenX
+      }
+    },
+    dragend2(e) {
+      this.langEnd = e.screenX
+      this.domWidth = this.$refs.barCon.clientWidth
+      this.audio.currentTime = this.langPer * this.total
+      this.percent = this.langPer
+    },
     redBuffer(item) {
       const buf = fs.readFileSync(item.path);// 读取文件，并将缓存区进行转换
       const uint8Buffer = Uint8Array.from(buf);
@@ -109,10 +176,11 @@ export default {
     goModal() { // 根据模式  选择下一首
       if (this.modal === 1) { // 下一首
         this.goNext()
-      } else if (this.modal === 2) { // 单曲
-
       } else if (this.modal === 2) { // 随机
-
+        const ran = Math.round(Math.random() * (this.musicList.length - 1))
+        this.goPlay(this.musicList[ran], ran)
+      } else if (this.modal === 3) { // 单曲
+        this.goPlay(this.musicList[this.musicIndex], this.musicIndex)
       }
     },
     changeModal() {
@@ -157,6 +225,7 @@ export default {
       const self = this;
       ipcRenderer.on('giveMusicList', (event, tracks) => {
         self.musicList = tracks
+        // self.goPlay(this.musicList[0], 0)
       })
     },
     goDelate(d) {
@@ -236,12 +305,44 @@ export default {
       width: 100%;
       text-align: center;
     }
-    .progress-bar{
-      height: 10px;
-      background: blue;
+    .barCon{
+      width: 100%;
+      position: relative;
+      .progress-bar{
+        height: 10px;
+        background: blue;
+      }
+      .barBall{
+        width: 15px;
+        height: 15px;
+        background: lightcoral;
+        border-radius:50%;
+        top: -3px;
+        position: absolute;
+      }
     }
+
     .bar-right{
       text-align: left;
+      display: flex;
+      align-items: center;
+      .volume{
+        margin-left:20px;
+        height: 10px;
+        width: 100px;
+        background: lightblue;
+        position: relative;
+        display: flex;
+        align-items: center;
+        .volume-block{
+          width: 10px;
+          height: 10px;
+          background: lightcoral;
+          border-radius:50%;
+          position: relative;
+          cursor: pointer;
+        }
+      }
     }
   }
 }
