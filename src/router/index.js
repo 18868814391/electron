@@ -12,12 +12,20 @@ const routes = [
   {
     path: '/home',
     name: 'home',
-    component: () => import('../views/Home.vue')
+    component: () => import('../views/Home.vue'),
+    meta: {
+      title: 'blog',
+      keepAlive: true
+    }
   },
   {
     path: '/blogDetail',
     name: 'blogDetail',
-    component: () => import('../views/blog/blogDetail.vue')
+    component: () => import('../views/blog/blogDetail.vue'),
+    meta: {
+      title: 'blog',
+      keepAlive: true
+    }
   },
   {
     path: '/blogAdd',

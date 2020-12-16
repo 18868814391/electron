@@ -1,11 +1,13 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, globalShortcut, Menu, ipcMain, dialog } from 'electron'
+import { app, protocol, BrowserWindow, globalShortcut, Menu, ipcMain, dialog, Notification } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const DataStore = require('../MusicDataStore')
 const MusicData = new DataStore({ name: 'Music Data' })
+
+let minWin = null // 主应用窗口
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -14,7 +16,7 @@ protocol.registerSchemesAsPrivileged([
 
 async function createWindow () {
   // Create the browser window.
-  const win = new BrowserWindow({
+  minWin = new BrowserWindow({
     width: 1200,
     height: 620,
     webPreferences: {
@@ -29,12 +31,12 @@ async function createWindow () {
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
-    await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
-    if (!process.env.IS_TEST) win.webContents.openDevTools()
+    await minWin.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
+    if (!process.env.IS_TEST) minWin.webContents.openDevTools()
   } else {
     createProtocol('app')
     // Load the index.html when not in development
-    win.loadURL('app://./index.html')
+    minWin.loadURL('app://./index.html')
   }
 
   createMenu()
@@ -84,6 +86,7 @@ app.on('activate', () => {
 app.on('ready', async () => {
   if (isDevelopment && !process.env.IS_TEST) {
     // Install Vue Devtools
+    showNotification()
     try {
       await installExtension(VUEJS_DEVTOOLS)
     } catch (e) {
@@ -92,8 +95,8 @@ app.on('ready', async () => {
   }
   // 在开发环境和生产环境均可通过快捷键打开devTools
   globalShortcut.register('CommandOrControl+Shift+i', function () {
-    const win = new BrowserWindow()
-    win.webContents.openDevTools()
+    // const win = new BrowserWindow()
+    minWin.webContents.openDevTools()
   })
   createWindow()
 })
@@ -113,8 +116,17 @@ if (isDevelopment) {
   }
 }
 
+function showNotification () {
+  const notification = {
+    title: 'syf提示',
+    body: '欢迎使用syf桌面端'
+  }
+  new Notification(notification).show()
+}
+
 // 添加窗口发来的信息：打开文件夹去选择音乐
 ipcMain.on('open-music-file', (event) => {
+  console.log('open-music-file')
   dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Music', extensions: ['mp3', 'flac'] }]
@@ -131,6 +143,20 @@ ipcMain.on('open-music-file', (event) => {
 ipcMain.on('add-tracks', (event, tracks) => {
   // 数据持久化
   const updateTracks = MusicData.addTracks(tracks).getTracks() // 先保存再拿最新的出来
-  // mainWindow.send('getTracks', updateTracks) // 通知index.html渲染
+  minWin.send('getTracks', updateTracks) // 通知渲染
   // closeAddWindow() // 关闭add页面
+})
+
+// 读取本地音乐列表
+ipcMain.on('read-local-list', (event) => {
+  console.log(MusicData.getTracks())
+  const musicList = MusicData.getTracks()
+  event.sender.send('giveMusicList', musicList)
+})
+
+// 删除本地音乐列表
+ipcMain.on('deleteMusic', (event, item) => {
+  MusicData.removeTrack(item.id)
+  const musicList = MusicData.getTracks()
+  event.sender.send('giveMusicList', musicList)
 })

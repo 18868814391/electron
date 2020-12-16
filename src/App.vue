@@ -6,7 +6,10 @@
       <div class="navBtn" @click="routrGo('/about',3)" :class="this.$store.state.navType==3?'navAct':''">about</div>
     </div>
     <div id="view">
-      <router-view/>
+      <keep-alive v-if="$route.meta.keepAlive">
+        <router-view/>
+      </keep-alive>
+      <router-view v-else/>
     </div>
   </div>
 </template>
@@ -71,6 +74,7 @@ body{
   }
 }
 #view{
+  position: relative;
   flex: 1;
 }
 </style>
