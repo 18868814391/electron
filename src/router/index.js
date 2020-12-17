@@ -43,6 +43,11 @@ const routes = [
     component: () => import('../components/addMusic.vue')
   },
   {
+    path: '/postman',
+    name: 'postman',
+    component: () => import('../views/postman.vue')
+  },
+  {
     path: '/about',
     name: 'About',
     // route level code-splitting
