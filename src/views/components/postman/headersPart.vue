@@ -27,11 +27,11 @@ export default {
     },
     delectOne(ind) {
       this.paramArr.splice(ind, 1)
-      this.$emit('giveParams', this.paramArr)
+      this.$emit('giveHeaders', this.paramArr)
     },
     inpFun(i, e) {
       this.paramArr[i].select = true
-      this.$emit('giveParams', this.paramArr)
+      this.$emit('giveHeaders', this.paramArr)
     }
   }
 }

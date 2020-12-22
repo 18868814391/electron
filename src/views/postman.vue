@@ -7,41 +7,104 @@
         </select>
       </div>
       <div class="head-c">
-        <textarea class="head-c-inp" type="text" placeholder="请输入地址" v-model="sendUrl"></textarea>
+        <textarea class="head-c-inp" type="text" placeholder="请输入地址" v-model="sendUrl" @input="urlInpFun"></textarea>
       </div>
       <div class="head-r">
-        <button>send</button>
+        <button @click="goSend()" v-if="!loading">send</button>
+        <button  v-if="loading">loding...</button>
       </div>
     </div>
     <div class="option">
       <div class="option-nav">
-        <div class="navs" @click="optionType=1" :class="optionType==1?'op-select':''">Params</div>
-        <div class="navs" @click="optionType=2" :class="optionType==2?'op-select':''">Headers</div>
-        <div class="navs" @click="optionType=3" :class="optionType==3?'op-select':''">Body</div>
+        <div class="navs" @click="changeType(1)" :class="optionType==1?'op-select':''">Params</div>
+        <div class="navs" @click="changeType(2)" :class="optionType==2?'op-select':''">Headers</div>
+        <div class="navs" @click="changeType(3)" :class="optionType==3?'op-select':''">Body</div>
       </div>
-      <paramsPart></paramsPart>
+      <paramsPart @giveParams="giveParams" v-show="optionType==1"></paramsPart>
+      <headersPart @giveHeaders="giveHeaders" v-show="optionType==2"></headersPart>
+      <bodyPart @giveBody="giveBody" v-show="optionType==3"></bodyPart>
+    </div>
+    <div class="response">
+      <pre>{{responseData}}</pre>
     </div>
   </div>
 </template>>
 <script>
+import axios from 'axios';
 import paramsPart from './components/postman/paramsPart'
+import headersPart from './components/postman/headersPart'
+import bodyPart from './components/postman/bodyPart'
 export default {
   components: {
-    paramsPart
+    paramsPart,
+    headersPart,
+    bodyPart
   },
   data() {
     return {
+      loading: false,
       sendType: 'GET',
       sendTypes: ['GET', 'POST'],
       sendUrl: '',
-      optionType: 1
+      optionType: 1,
+      params: [],
+      headers: [],
+      responseData: {}
     }
   },
   created() {
-
+    axios.defaults.adapter = require('axios/lib/adapters/http');
   },
   methods: {
+    goSend() {
+      const self = this;
+      if (this.sendType === 'GET') {
+        self.loading = true
+        axios.get(self.sendUrl).then((d) => {
+          console.log(d.data)
+          self.responseData = d.data
+        }).finally(() => {
+          self.loading = false
+        })
+      } else if (this.sendType === 'POST') {
+        // axios.post(self.sendUrl,this.).then((d)=>{console.log(d)})
+      }
+    },
+    changeType(e) {
+      this.optionType = e
+    },
+    urlInpFun() {
+      // let paramsPart = this.sendUrl.split('?')[1]
+      // if(paramsPart&&paramsPart.indexOf('=')!=-1){
+      //   let arr=paramsPart.split('&')
+      //   let arr2=[]
+      //   arr.forEach((v,i,a)=>{
 
+      //   })
+      // }
+    },
+    giveParams(e) {
+      this.sendUrl = this.sendUrl.split('?')[0]
+      this.params = e
+      let addUrl = ''
+      this.params.forEach((v, i, a) => {
+        if (v.select) {
+          addUrl = addUrl + `${i === 0 ? '?' : '&'}${v.key}=${v.value}`
+        }
+      })
+      this.sendUrl = this.sendUrl + addUrl
+    },
+    giveHeaders(e) {
+      this.headers = e
+      this.headers.forEach((v, i, a) => {
+        if (v.select) {
+          axios.defaults.headers[v.key] = v.value
+        }
+      })
+    },
+    giveBody(e) {
+      console.log(e)
+    }
   }
 }
 </script>
@@ -86,6 +149,10 @@ export default {
         background: lightblue;
       }
     }
+  }
+  .response{
+    width: 100%;
+    text-align: left;
   }
 }
 </style>
