@@ -1,4 +1,8 @@
 # electron-syf
+```
+electron 
+包含一个本地音乐  与  postman简化版
+```
 
 ## Project setup
 ```
