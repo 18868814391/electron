@@ -2,7 +2,7 @@
   <div class="postman">
     <div class="head">
       <div class="head-l">
-        <select v-model="sendType">
+        <select v-model="sendType" @change="gpchange">
           <option v-for="(item,index) in sendTypes" :key="index" :value ="item">{{item}}</option>
         </select>
       </div>
@@ -20,7 +20,7 @@
         <div class="navs" @click="changeType(2)" :class="optionType==2?'op-select':''">Headers</div>
         <div class="navs" @click="changeType(3)" :class="optionType==3?'op-select':''">Body</div>
       </div>
-      <paramsPart @giveParams="giveParams" v-show="optionType==1"></paramsPart>
+      <paramsPart ref="paramsPart" @giveParams="giveParams" v-show="optionType==1"></paramsPart>
       <headersPart @giveHeaders="giveHeaders" v-show="optionType==2"></headersPart>
       <bodyPart @giveBody="giveBody" v-show="optionType==3"></bodyPart>
     </div>
@@ -28,9 +28,10 @@
       <pre>{{responseData}}</pre>
     </div>
   </div>
-</template>>
+</template>
 <script>
 import axios from 'axios';
+import qs from 'qs'
 import paramsPart from './components/postman/paramsPart'
 import headersPart from './components/postman/headersPart'
 import bodyPart from './components/postman/bodyPart'
@@ -49,6 +50,7 @@ export default {
       optionType: 1,
       params: [],
       headers: [],
+      bodys: {},
       responseData: {}
     }
   },
@@ -56,18 +58,64 @@ export default {
     axios.defaults.adapter = require('axios/lib/adapters/http');
   },
   methods: {
+    gpchange(e) {
+      console.log(e)
+      if (this.sendType === 'GET') {
+        this.$refs.paramsPart.selectAll()
+      } else if (this.sendType === 'POST') {
+        this.$refs.paramsPart.cancelAll()
+      }
+    },
     goSend() {
       const self = this;
       if (this.sendType === 'GET') {
         self.loading = true
         axios.get(self.sendUrl).then((d) => {
-          console.log(d.data)
           self.responseData = d.data
+        }).catch((d) => {
+          self.responseData = d
         }).finally(() => {
           self.loading = false
         })
       } else if (this.sendType === 'POST') {
-        // axios.post(self.sendUrl,this.).then((d)=>{console.log(d)})
+        self.loading = true
+        let body = null
+        if (this.bodys.type === 1) { // ------------------------------------------------------------none
+          body = null
+          axios.defaults.headers['Content-Type'] = ''
+        } else if (this.bodys.type === 2) { // --------------------------------------------------form-data
+          const formDataArr = this.bodys.formData
+          const obj = {}
+          formDataArr.forEach((v) => {
+            if (v.select) {
+              obj[v.key] = v.value
+            }
+          })
+          body = obj
+          axios.defaults.headers['Content-Type'] = 'multipart/form-data'
+        } else if (this.bodys.type === 3) { // -------------------------------------------x-www-form-urlencoded
+          const xwwwFormArr = this.bodys.xwwwForm
+          const obj = {}
+          xwwwFormArr.forEach((v) => {
+            if (v.select) {
+              obj[v.key] = v.value
+            }
+          })
+          body = qs.stringify(obj)
+          axios.defaults.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        } else if (this.bodys.type === 4) { // -----------------------------------------------------json
+          body = this.bodys.json
+          axios.defaults.headers['Content-Type'] = 'application/json'
+        } else if (this.bodys.type === 5) { // ------------------------------------------------------binary
+          body = this.bodys.binary
+          axios.defaults.headers['Content-Type'] = 'multipart/form-data'
+        }
+        axios.post(self.sendUrl, body)
+          .then((d) => { self.responseData = d.data }).catch((d) => {
+            self.responseData = d
+          }).finally(() => {
+            self.loading = false
+          })
       }
     },
     changeType(e) {
@@ -104,6 +152,7 @@ export default {
     },
     giveBody(e) {
       console.log(e)
+      this.bodys = e
     }
   }
 }
@@ -151,7 +200,8 @@ export default {
     }
   }
   .response{
-    width: 100%;
+    max-width: 600px;
+    word-break: break-all;
     text-align: left;
   }
 }

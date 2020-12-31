@@ -41,26 +41,28 @@ export default {
   methods: {
     selectType(d) {
       this.type = d.id
+      this.giveData()
     },
     getFormData(e) {
       this.formData = e
+      this.giveData()
     },
     getXwwwForm(e) {
       this.xwwwForm = e
+      this.giveData()
     },
     getJson(e) {
-      try {
-        this.json = JSON.parse(this.jsonText)
-      } catch {
-        alert('JSON parse fail')
-      }
+      this.json = JSON.parse(this.jsonText)
+      this.giveData()
     },
     upload(e) {
       const file = e.target.files[0];
       this.binary = new FormData();// 创建 formdata对象
       this.binary.append('file', file);
+      this.giveData()
     },
     giveData() {
+      console.log({type: this.type, formData: this.formData, xwwwForm: this.xwwwForm, json: this.json, binary: this.binary})
       this.$emit('giveBody', {type: this.type, formData: this.formData, xwwwForm: this.xwwwForm, json: this.json, binary: this.binary})
     }
   }
