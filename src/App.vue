@@ -27,7 +27,7 @@ export default {
   methods: {
     routrGo(d, t) {
       this.$store.state.navType = t
-      this.$router.push(d)
+      this.$router.replace(d)
     }
   }
 }

@@ -145,9 +145,7 @@ export default {
     giveHeaders(e) {
       this.headers = e
       this.headers.forEach((v, i, a) => {
-        if (v.select) {
-          axios.defaults.headers[v.key] = v.value
-        }
+        axios.defaults.headers[v.key] = v.select ? v.value : ''
       })
     },
     giveBody(e) {

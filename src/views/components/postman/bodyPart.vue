@@ -6,7 +6,7 @@
 
     <div v-show="type==1"></div>
     <div v-show="type==2">
-      <paramsPart @giveParams="getFormData"></paramsPart>
+      <formDataPart @giveParams="getFormData"></formDataPart>
     </div>
     <div v-show="type==3">
       <paramsPart @giveParams="getXwwwForm"></paramsPart>
@@ -22,10 +22,12 @@
 </template>
 
 <script>
+import formDataPart from './formDataPart'
 import paramsPart from './paramsPart'
 export default {
   components: {
-    paramsPart
+    paramsPart,
+    formDataPart
   },
   data() {
     return {
@@ -59,6 +61,7 @@ export default {
       const file = e.target.files[0];
       this.binary = new FormData();// 创建 formdata对象
       this.binary.append('file', file);
+      // console.log(this.binary.get('file'))
       this.giveData()
     },
     giveData() {

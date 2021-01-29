@@ -23,8 +23,7 @@ const routes = [
     name: 'blogDetail',
     component: () => import('../views/blog/blogDetail.vue'),
     meta: {
-      title: 'blog',
-      keepAlive: true
+      title: 'blog'
     }
   },
   {

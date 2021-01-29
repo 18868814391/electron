@@ -50,6 +50,11 @@ export default {
     width: 100%;
     padding: 15px;
     box-sizing: border-box;
+    word-break: break-all;
+    pre{
+      word-break: break-word !important;
+      white-space: pre-wrap !important;
+    }
     img{
       max-width: 80%;
     }
