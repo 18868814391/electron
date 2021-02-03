@@ -33,6 +33,7 @@ export default {
 <style lang="less">
 .blogDetail{
   width: 100%;
+  text-align: left !important;
   .blogDetail-tit{
     font-size: 20px;
     font-weight: bold;
@@ -52,6 +53,7 @@ export default {
     box-sizing: border-box;
     word-break: break-all;
     pre{
+      text-align: left !important;
       word-break: break-word !important;
       white-space: pre-wrap !important;
     }
