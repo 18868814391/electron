@@ -160,3 +160,18 @@ ipcMain.on('deleteMusic', (event, item) => {
   const musicList = MusicData.getTracks()
   event.sender.send('giveMusicList', musicList)
 })
+
+// 选择文件路径
+ipcMain.on('open-doc-file', (event) => {
+  console.log('open-doc-file')
+  dialog.showOpenDialog({
+    properties: ['openDirectory']
+  }).then((res) => {
+    // 拿到结果
+    console.log(res)
+    const { canceled, filePaths } = res
+    if (!canceled && filePaths.length) {
+      event.sender.send('selected-path', filePaths)
+    }
+  })
+})

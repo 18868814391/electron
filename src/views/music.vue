@@ -198,7 +198,7 @@ export default {
     },
     addMusic() {
       const modalPath = process.env.NODE_ENV === 'development'
-        ? 'http://localhost:8081/#/addMusic'
+        ? 'http://localhost:8080/#/addMusic'
         : `file://${__dirname}/index.html#addMusic`
       this.openWin = new BrowserWindow({
         width: 500,
