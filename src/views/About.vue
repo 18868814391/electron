@@ -1,36 +1,52 @@
 <template>
   <div class="about">
-    <h1>This is an about page</h1>
-    <button @click="selectPath()">选择监听目录</button>
-    <div>
-      监听状态：{{listening}}
+    <div class="about-b1">
+      <button class="about-b1-btn" @click="selectPath()">选择监听目录</button>
+      <div :style="{color:(listening?'#3eb370':'#ec6d51')}">监听状态：{{listening?'监听中':'未监听'}}</div>
+      <button class="about-b1-btn2" @click="startWatch()" v-if="!listening">开始监听</button>
+      <button class="about-b1-btn2" @click="stopWatch()" v-else>取消监听</button>
     </div>
-    <p>当前选择的目录为:{{dicPath}}</p>
-    <div class="hisBox">
-      <div v-for="(item,index) in history" :key="index">
-        {{item}}
-        <button v-if="index!==0" @click="goUpload(item)">手动上传</button>
+    <div class="about-b2">当前的监听目录为:{{dicPath}}</div>
+    <div class="fileBox">
+      <div class="fb1">
+        <div class="title">【{{yima}}】监听开始时已有文件</div>
+        <div class="fileItem" v-for="(item,index) in originFile" :key="index">
+          <span>{{item.name}}</span>
+          <button class="fileUp" @click="goUpload(item.path,item)" v-if="item.status==0">手动上传</button>
+          <button class="fileUp" disabled v-if="item.status==1">上传中...</button>
+          <button class="fileUp" disabled v-if="item.status==2" style="background:#3eb370">上传完成</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，重传</button>
+        </div>
       </div>
-
+      <div class="fb1">
+        <div class="title">后续监听文件记录</div>
+        <div class="fileItem" v-for="(item,index) in history" :key="index">
+          <span>{{item.name}}</span>
+          <button class="fileUp" @click="goUpload(item.path,item)" v-if="item.status==0">手动上传</button>
+          <button class="fileUp" disabled v-if="item.status==1">上传中...</button>
+          <button class="fileUp" disabled v-if="item.status==2" style="background:#3eb370">上传完成</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，重传</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 <script>
 import axios from 'axios';
 const { ipcRenderer } = require('electron')
-// const watch = require('watch')
 const chokidar = require('chokidar');
 const fs = require('fs');
-// const mime = require('mime');
-// const request = require('request');
 const pathModal = require('path');
 export default {
   data() {
     return {
       dicPath: '',
       listening: false,
-      history: ['文件夹日志:']
-
+      originFile: [],
+      history: [],
+      yima: '',
+      step: 0,
+      watcher: null
     }
   },
   created() {
@@ -45,18 +61,59 @@ export default {
       const self = this
       // 主进程返回来的新的文件列表
       ipcRenderer.on('selected-path', (event, pathList) => {
-        console.log('backList', pathList)
         if (Array.isArray(pathList)) {
           self.dicPath = pathList[0]
-          self.startWatch(self.dicPath)
         }
       })
     },
-    startWatch(dicPath) {
+    readAll(path) {
       const self = this;
-      const watcher = chokidar.watch(dicPath);
-      watcher
+      return new Promise((resolve, reject) => {
+        fs.readdir(path, (err, files) => {
+          if (err) {
+            reject(err)
+          } else {
+            self.originFile = self.dealFile(files)
+            resolve()
+          }
+        })
+      })
+    },
+    dealFile(files) {
+      const arr = []
+      files.forEach((v) => {
+        const obj = {name: '', path: '', status: 0}
+        obj.name = v
+        obj.path = this.dicPath + '\\' + v
+        arr.push(obj)
+      })
+      return arr
+    },
+    getNowTime() {
+      const yy = new Date().getFullYear()
+      const mm = new Date().getMonth() + 1
+      const dd = new Date().getDate()
+      const hh = new Date().getHours()
+      const mf = new Date().getMinutes() < 10 ? '0' + new Date().getMinutes()
+        : new Date().getMinutes()
+      const ss = new Date().getSeconds() < 10 ? '0' + new Date().getSeconds()
+        : new Date().getSeconds()
+      const dateTime = yy + '-' + mm + '-' + dd + ' ' + hh + ':' + mf + ':' + ss
+      this.yima = dateTime
+    },
+    async startWatch() {
+      const self = this;
+      const dicPath = self.dicPath
+      if (!dicPath) {
+        alert('请选择需要监听的目录')
+        return false
+      }
+      self.getNowTime()
+      await self.readAll(self.dicPath)
+      self.watcher = chokidar.watch(dicPath);
+      self.watcher
         .on('add', function(path) {
+          console.log('file', path, 'has been added')
           self.getFile(path)
         })
         .on('addDir', function(path) {
@@ -76,135 +133,119 @@ export default {
         })
         .on('ready', self.onWatcherReady)
     },
+    stopWatch() {
+      this.watcher.close()
+      this.listening = false
+      this.originFile = []
+      this.history = []
+      this.yima = ''
+      console.log('watchEnd')
+    },
     onWatcherReady() {
-      console.log('watch ready')
       this.listening = true
     },
     getFile(file) {
-      console.log('监听到该文件add：', file)
-      if (this.history.indexOf(file) === -1) {
-        this.history.push(file)
+      const self = this
+      const fileName = pathModal.basename(file);
+      const flag = this.originFile.some((v) => {
+        return v.name === fileName
+      })
+      const flag2 = this.history.some((v) => {
+        return v.name === fileName
+      })
+      if (!flag && !flag2) {
+        const obj = {name: '', path: '', status: 0}
+        obj.name = fileName
+        obj.path = file
+        this.history.unshift(obj)
+        this.goUpload(file, self.history[0])
       }
     },
-    goUpload(path) {
+    goUpload(path, item) {
       // const self = this
-      console.log(path)
       const fileName = pathModal.basename(path);
-      console.log('fileName', fileName)
       fs.readFile(path, function(err, data) {
         if (err) {
+          alert(`读取错误${err}`)
           console.log('读取错误', err)
         } else {
           console.log('bufferData', data)
         }
         var fff = new File([data], fileName, {type: 'text/plain'})
-        // fff.path = path
-        // console.log('ffff', fff)
-        // console.log('binary', fff)
         const param = new FormData(); // 创建form对象
         param.append('file', fff); // 通过append向form对象添加数据
         param.append('isOriginalFilename', false); // 添加form表单中其他数据
         param.append('applicationMark', 'health'); // 添加form表单中其他数据
-        axios.post('https://api.qdsgvision.com/upload/upload/single',
+        item.status = 1
+        axios.post('https://apitest.qdsgvision.com/upload/upload/single',
           param,
           {
             headers: {
               'Content-Type': 'multipart/form-data'
             }
           }
-        )
-        // const reader = new FileReader();
-        // reader.readAsBinaryString(fff);
-        // reader.onloadend = (e) => {
-        //   console.log('binary', e)
-        //   const param = new FormData(); // 创建form对象
-        //   param.append('file', e); // 通过append向form对象添加数据
-        //   param.append('isOriginalFilename', false); // 添加form表单中其他数据
-        //   param.append('applicationMark', 'health'); // 添加form表单中其他数据
-        //   axios.post('https://apitest.qdsgvision.com/upload/upload/single',
-        //     param,
-        //     {
-        //       headers: {
-        //         'Content-Type': 'multipart/form-data'
-        //       }
-        //     }
-        //   )
-        //   // axios({
-        //   //   url: 'https://apitest.qdsgvision.com/upload/upload/single',
-        //   //   method: 'post',
-        //   //   headers: {
-        //   //     'Content-Type': 'multipart/form-data'
-        //   //   },
-        //   //   data: {
-        //   //     file: e,
-        //   //     isOriginalFilename: false,
-        //   //     applicationMark: 'health'
-        //   //   }
-        //   // })
-        // }
+        ).then(() => {
+          item.status = 2
+        }).catch(() => {
+          item.status = 3
+        })
       })
-      // const buffer = fs.createReadStream(path)
-      // console.log('流', buffer)
-      // const fff = new File([buffer._readableState.buffer.tail.data], fileName, {type: 'text/plain'})
-      // console.log('ffff', fff)
-      // axios({
-      //   url: 'https://apitest.qdsgvision.com/upload/upload/single',
-      //   method: 'post',
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data'
-      //   },
-      //   data: {
-      //     file: buffer,
-      //     isOriginalFilename: true
-      //   }
-      // })
-
-      // request.post({
-      //   url: 'https://apitest.qdsgvision.com/upload/upload/single',
-      //   formData: {
-      //     file: buffer,
-      //     isOriginalFilename: true
-      //   }
-      // },
-      // function optionalCallback(err, httpResponse, body) {
-      //   if (err) {
-      //     return console.error('upload failed:', err);
-      //   }
-      // }
-      // )
-      // fs.stat(path, (err, stats) => {
-      //   if (err) throw err;
-      //   console.log(stats)
-      // })
     }
-    // bytesToBinary(bytes) {
-    //   const length = bytes.length;
-    //   let result = '';
-    //   for (let i = 0; i < length; i++) {
-    //     const binStr = Number(bytes[i]).toString(16)
-    //     result += '0'.repeat(2 - binStr.length) + binStr; // 不足二位前置补0
-    //   }
-    //   return result.toString();
-    // },
-    // 读取文件信息
-    // getFileStats(path, callback) {
-    //   fs.stat(path, (err, status) => {
-    //     if (err) {
-    //       callback(err);
-    //     } else {
-    //       const index = path.lastIndexOf('\\');
-    //       const len = path.length;
-    //       const filename = index !== -1 ? path.substring(index + 1, len) : path;
-    //       const mimetype = mime.lookup(path)
-    //       callback(null, {size: status.size, name: filename, path: path, type: mimetype});
-    //     }
-    //   })
-    // }
   }
 
 }
 </script>
 <style lang="less" scoped>
+.about{
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  .about-b1{
+    width: 100%;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    .about-b1-btn{
+      width: 100px;
+      margin-right:10px ;
+    }
+    .about-b1-btn2{
+      margin-left:10px;
+    }
+  }
+  .about-b2{
+    width: 100%;
+    text-align: left;
+    margin-bottom:5px;
+  }
+  .fileBox{
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .fb1{
+      width: 49%;
+      padding: 5px;
+      box-sizing: border-box;
+      height: 100%;
+      border: 1px solid #666;
+      border-radius:10px;
+      overflow: auto;
+      .fileItem{
+        width: 100%;
+        text-align: left;
+        margin-top: 2px;
+        border-bottom:1px solid #bbb ;
+        .fileUp{
+          margin-left: 5px;
+        }
+      }
+    }
+  }
+}
 .hisBox{
   width: 100%;
   height: 350px;
