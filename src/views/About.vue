@@ -67,7 +67,7 @@ export default {
       step: 0,
       watcher: null,
       uploadHistoryList: [],
-      showKeyword: true,
+      showKeyword: false,
       keyObj: {}
     }
   },

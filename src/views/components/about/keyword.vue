@@ -71,8 +71,8 @@ export default {
 
 <style lang="less" scoped>
 .keyword{
-  width:50vw;
-  height: 50vh;
+  width:500px;
+  height: 300px;
   background: white;
   position: fixed;
   left: 50%;
@@ -87,6 +87,7 @@ export default {
     position: absolute;
     right: 10px;
     top: 10px;
+    color:blue;
   }
   .tips{
     font-size: 12px;
