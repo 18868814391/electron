@@ -2,6 +2,7 @@
   <div class="historyFile">
     <button @click="clearAll()">清空</button>
     <div v-for="(item,index) in uploadHistoryList" :key="index">{{item.fileName}}</div>
+    <div v-if="!uploadHistoryList||uploadHistoryList.length==0">暂无文件~</div>
   </div>
 </template>
 

@@ -5,9 +5,15 @@
       <div :style="{color:(listening?'#3eb370':'#ec6d51')}">监听状态：{{listening?'监听中':'未监听'}}</div>
       <button class="about-b1-btn2" @click="startWatch()" v-if="!listening">开始监听</button>
       <button class="about-b1-btn2" @click="stopWatch()" v-else>取消监听</button>
-      <button style="margin-left:auto" @click="openHistory()">查看已上传文件</button>
+      <div style="margin-left:30px;flex:1" >
+        <button class="keyword" @click="openHistory()" >查看已上传文件</button>
+        <button class="keyword" @click="setKey()">关键字设置</button>
+      </div>
     </div>
-    <div class="about-b2">当前的监听目录为:<span class="pathName" @click="openPath(dicPath)" v-if="dicPath">{{dicPath}}</span></div>
+    <div class="about-b2">
+      当前的监听目录为:
+      <span class="pathName" @click="openPath(dicPath)" v-if="dicPath">{{dicPath}}</span>
+    </div>
     <div class="fileBox">
       <div class="fb1">
         <div class="title">【{{yima}}】监听开始时已有文件</div>
@@ -16,7 +22,8 @@
           <button class="fileUp" @click="goUpload(item.path,item)" v-if="item.status==0">手动上传</button>
           <button class="fileUp" disabled v-if="item.status==1">上传中...</button>
           <button class="fileUp" disabled v-if="item.status==2" style="background:#3eb370">上传完成</button>
-          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，重传</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，点击重传</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:orange" v-if="item.status==4">关键字拦截，点击重传</button>
         </div>
       </div>
       <div class="fb1">
@@ -27,21 +34,29 @@
           <button class="fileUp" disabled v-if="item.status==1">上传中...</button>
           <button class="fileUp" disabled v-if="item.status==2" style="background:#3eb370">上传完成</button>
           <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，点击重传</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:orange" v-if="item.status==4">关键字拦截，点击重传</button>
         </div>
       </div>
     </div>
+    <Keyword v-if="showKeyword" @setKey="setKey" @getKeys="getKeys"></Keyword>
   </div>
 </template>
 <script>
 import axios from 'axios';
 import electron from 'electron'
+import Keyword from './components/about/keyword'
 const { ipcRenderer } = require('electron')
 const {shell} = require('electron').remote
 const chokidar = require('chokidar');
 const fs = require('fs');
 const pathModal = require('path');
 const { BrowserWindow} = electron.remote
+const ObjStore = require('../../objDataStore.js')
+const keyWordObj = new ObjStore({ name: 'keyWordObj' })
 export default {
+  components: {
+    Keyword
+  },
   data() {
     return {
       dicPath: '',
@@ -51,15 +66,24 @@ export default {
       yima: '',
       step: 0,
       watcher: null,
-      uploadHistoryList: []
+      uploadHistoryList: [],
+      showKeyword: true,
+      keyObj: {}
     }
   },
   created() {
     this.listen1()
     this.listen3()
     this.uploadedFile()
+    this.getKeys()
   },
   methods: {
+    setKey() {
+      this.showKeyword = !this.showKeyword
+    },
+    getKeys() {
+      this.keyObj = keyWordObj.getTracks()
+    },
     openPath(path) {
       shell.showItemInFolder(path);
     },
@@ -178,6 +202,24 @@ export default {
     goUpload(path, item) {
       const self = this
       const fileName = pathModal.basename(path);
+      if (this.keyObj.pass && this.keyObj.pass[0]) {
+        const flag = this.keyObj.pass.some((item) => {
+          return fileName.indexOf(item) !== -1
+        })
+        if (!flag) {
+          item.status = 4
+          return false
+        }
+      }
+      if (this.keyObj.refuse && this.keyObj.refuse[0]) {
+        const flag = this.keyObj.refuse.some((item) => {
+          return fileName.indexOf(item) !== -1
+        })
+        if (flag) {
+          item.status = 4
+          return false
+        }
+      }
       fs.readFile(path, function(err, data) {
         if (err) {
           alert(`读取错误${err}`)
@@ -203,7 +245,6 @@ export default {
           self.recordIt(path)
         }).catch(() => {
           item.status = 3
-          self.recordIt(path)
         })
       })
     },
@@ -265,6 +306,8 @@ export default {
     width: 100%;
     text-align: left;
     margin-bottom:5px;
+    display: flex;
+    align-items: center;
   }
   .fileBox{
     width: 100%;
@@ -296,6 +339,9 @@ export default {
     color: blue;
     text-decoration-line: underline;
     cursor: pointer;
+  }
+  .keyword{
+    margin-right:10px ;
   }
 }
 .hisBox{
