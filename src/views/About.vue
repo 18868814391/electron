@@ -5,8 +5,9 @@
       <div :style="{color:(listening?'#3eb370':'#ec6d51')}">监听状态：{{listening?'监听中':'未监听'}}</div>
       <button class="about-b1-btn2" @click="startWatch()" v-if="!listening">开始监听</button>
       <button class="about-b1-btn2" @click="stopWatch()" v-else>取消监听</button>
+      <button style="margin-left:auto" @click="openHistory()">查看已上传文件</button>
     </div>
-    <div class="about-b2">当前的监听目录为:{{dicPath}}</div>
+    <div class="about-b2">当前的监听目录为:<span class="pathName" @click="openPath(dicPath)" v-if="dicPath">{{dicPath}}</span></div>
     <div class="fileBox">
       <div class="fb1">
         <div class="title">【{{yima}}】监听开始时已有文件</div>
@@ -25,7 +26,7 @@
           <button class="fileUp" @click="goUpload(item.path,item)" v-if="item.status==0">手动上传</button>
           <button class="fileUp" disabled v-if="item.status==1">上传中...</button>
           <button class="fileUp" disabled v-if="item.status==2" style="background:#3eb370">上传完成</button>
-          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，重传</button>
+          <button class="fileUp" @click="goUpload(item.path,item)" style="background:#ec6d51" v-if="item.status==3">上传失败，点击重传</button>
         </div>
       </div>
     </div>
@@ -33,10 +34,13 @@
 </template>
 <script>
 import axios from 'axios';
+import electron from 'electron'
 const { ipcRenderer } = require('electron')
+const {shell} = require('electron').remote
 const chokidar = require('chokidar');
 const fs = require('fs');
 const pathModal = require('path');
+const { BrowserWindow} = electron.remote
 export default {
   data() {
     return {
@@ -46,13 +50,19 @@ export default {
       history: [],
       yima: '',
       step: 0,
-      watcher: null
+      watcher: null,
+      uploadHistoryList: []
     }
   },
   created() {
     this.listen1()
+    this.listen3()
+    this.uploadedFile()
   },
   methods: {
+    openPath(path) {
+      shell.showItemInFolder(path);
+    },
     selectPath() {
       // 请求主进程打开文件选择
       ipcRenderer.send('open-doc-file')
@@ -85,8 +95,12 @@ export default {
         const obj = {name: '', path: '', status: 0}
         obj.name = v
         obj.path = this.dicPath + '\\' + v
+        if (this.uploadHistoryList.some((vv) => vv.fileName === v)) {
+          obj.status = 2
+        }
         arr.push(obj)
       })
+
       return arr
     },
     getNowTime() {
@@ -162,7 +176,7 @@ export default {
       }
     },
     goUpload(path, item) {
-      // const self = this
+      const self = this
       const fileName = pathModal.basename(path);
       fs.readFile(path, function(err, data) {
         if (err) {
@@ -186,10 +200,43 @@ export default {
           }
         ).then(() => {
           item.status = 2
+          self.recordIt(path)
         }).catch(() => {
           item.status = 3
+          self.recordIt(path)
         })
       })
+    },
+    recordIt(path) {
+      ipcRenderer.send('add-file', [path])
+    },
+    uploadedFile() {
+      ipcRenderer.send('read-file')
+    },
+    listen3() {
+      const self = this;
+      ipcRenderer.on('giveUploadedList', (event, tracks) => {
+        self.uploadHistoryList = tracks
+      })
+    },
+    listen4() {
+      const self = this
+      ipcRenderer.on('updataFile', (event, tracks) => {
+        self.uploadHistoryList = tracks
+      })
+    },
+    openHistory() {
+      const modalPath = process.env.NODE_ENV === 'development'
+        ? 'http://localhost:8080/#/historyFile'
+        : `file://${__dirname}/index.html#historyFile`
+      this.openWin = new BrowserWindow({
+        width: 500,
+        height: 350,
+        webPreferences: {
+          nodeIntegration: true
+        }
+      })
+      this.openWin.loadURL(modalPath)
     }
   }
 
@@ -244,6 +291,11 @@ export default {
         }
       }
     }
+  }
+  .pathName{
+    color: blue;
+    text-decoration-line: underline;
+    cursor: pointer;
   }
 }
 .hisBox{

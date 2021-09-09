@@ -6,6 +6,7 @@ import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const DataStore = require('../MusicDataStore')
 const MusicData = new DataStore({ name: 'Music Data' })
+const upLoadFiles = new DataStore({ name: 'opLoad Files' })
 
 let minWin = null // 主应用窗口
 
@@ -174,4 +175,25 @@ ipcMain.on('open-doc-file', (event) => {
       event.sender.send('selected-path', filePaths)
     }
   })
+})
+
+// 添加窗口发来的信息： 导入文件
+ipcMain.on('add-file', (event, tracks) => {
+  // 数据持久化
+  const updateTracks = upLoadFiles.addTracks(tracks).getTracks() // 先保存再拿最新的出来
+  minWin.send('updataFile', updateTracks) // 通知渲染
+  // closeAddWindow() // 关闭add页面
+})
+
+// 读取文件列表
+ipcMain.on('read-file', (event) => {
+  const fileList = upLoadFiles.getTracks()
+  event.sender.send('giveUploadedList', fileList)
+})
+
+// 删除文件列表
+ipcMain.on('delete-all', (event, item) => {
+  upLoadFiles.removeAll()
+  const fileList = upLoadFiles.getTracks()
+  event.sender.send('giveUploadedList', fileList)
 })

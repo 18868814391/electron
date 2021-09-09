@@ -44,6 +44,12 @@ class DataStore extends Store {
     this._tracks = this._tracks.filter(track => track.id !== id)
     return this.saveTracks()
   }
+
+  // 删除全部
+  removeAll() {
+    this._tracks = []
+    return this.saveTracks()
+  }
 }
 
 module.exports = DataStore
