@@ -13,6 +13,7 @@
     <div class="about-b2">
       当前的监听目录为:
       <span class="pathName" @click="openPath(dicPath)" v-if="dicPath">{{dicPath}}</span>
+      <div class="latestTime">最近一次上传时间：{{latestTime?latestTime:'暂无'}}</div>
     </div>
     <div class="fileBox">
       <div class="fb1">
@@ -66,6 +67,7 @@ export default {
       yima: '',
       step: 0,
       watcher: null,
+      latestTime: '',
       uploadHistoryList: [],
       showKeyword: false,
       keyObj: {}
@@ -127,7 +129,7 @@ export default {
 
       return arr
     },
-    getNowTime() {
+    getNowTime(type) {
       const yy = new Date().getFullYear()
       const mm = new Date().getMonth() + 1
       const dd = new Date().getDate()
@@ -137,7 +139,11 @@ export default {
       const ss = new Date().getSeconds() < 10 ? '0' + new Date().getSeconds()
         : new Date().getSeconds()
       const dateTime = yy + '-' + mm + '-' + dd + ' ' + hh + ':' + mf + ':' + ss
-      this.yima = dateTime
+      if (type === 1) {
+        this.latestTime = dateTime
+      } else {
+        this.yima = dateTime
+      }
     },
     async startWatch() {
       const self = this;
@@ -242,6 +248,7 @@ export default {
           }
         ).then(() => {
           item.status = 2
+          self.getNowTime(1)
           self.recordIt(path)
         }).catch(() => {
           item.status = 3
@@ -308,6 +315,9 @@ export default {
     margin-bottom:5px;
     display: flex;
     align-items: center;
+    .latestTime{
+      margin-left:auto;
+    }
   }
   .fileBox{
     width: 100%;
