@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = 'https://www.shenyifan.top/apis/syf/php';
+axios.defaults.baseURL = 'https://www.shenyifan.top/apis/php';
 axios.defaults.adapter = require('axios/lib/adapters/http');
 
 // 请求拦截  设置统一header
